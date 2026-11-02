@@ -1,0 +1,25 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wtss.PamBrokerEnrollmentService", "src\Wtss.PamBrokerEnrollmentService\Wtss.PamBrokerEnrollmentService.csproj", "{1C1D06EF-4DBF-4F50-A517-5284B673E784}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Wtss.PamBrokerEnrollmentService.Tests", "tests\Wtss.PamBrokerEnrollmentService.Tests\Wtss.PamBrokerEnrollmentService.Tests.csproj", "{8A7BA746-E395-4B35-BB82-B32F9DBED332}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1C1D06EF-4DBF-4F50-A517-5284B673E784}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1C1D06EF-4DBF-4F50-A517-5284B673E784}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1C1D06EF-4DBF-4F50-A517-5284B673E784}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1C1D06EF-4DBF-4F50-A517-5284B673E784}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8A7BA746-E395-4B35-BB82-B32F9DBED332}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8A7BA746-E395-4B35-BB82-B32F9DBED332}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8A7BA746-E395-4B35-BB82-B32F9DBED332}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8A7BA746-E395-4B35-BB82-B32F9DBED332}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
+

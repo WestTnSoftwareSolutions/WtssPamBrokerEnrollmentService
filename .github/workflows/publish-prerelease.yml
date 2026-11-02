@@ -1,0 +1,123 @@
+name: Publish prerelease
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-prerelease
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build, test, and publish Windows prerelease
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Read and validate version
+        id: version
+        shell: pwsh
+        run: |
+          $version = (Get-Content -LiteralPath ./VERSION -Raw).Trim()
+          if ($version -cnotmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-[0-9A-Za-z]+(?:[0-9A-Za-z.-]*[0-9A-Za-z])?$') {
+            throw "VERSION must be a SemVer prerelease such as 0.1.0-preview.1; found '$version'."
+          }
+
+          $tag = "v$version"
+          git fetch --tags --force
+          if (git tag --list $tag) {
+            throw "Tag '$tag' already exists. Increment VERSION before publishing another prerelease."
+          }
+
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Restore
+        run: dotnet restore ./WtssPamBrokerEnrollmentService.sln
+
+      - name: Build
+        run: dotnet build ./WtssPamBrokerEnrollmentService.sln --configuration Release --no-restore -p:ContinuousIntegrationBuild=true
+
+      - name: Test
+        run: dotnet test ./WtssPamBrokerEnrollmentService.sln --configuration Release --no-build --no-restore --logger "console;verbosity=normal"
+
+      - name: Publish self-contained Windows executable
+        shell: pwsh
+        run: |
+          dotnet publish ./src/Wtss.PamBrokerEnrollmentService/Wtss.PamBrokerEnrollmentService.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:PublishTrimmed=false `
+            -p:DebugType=None `
+            -p:DebugSymbols=false `
+            --output ./artifacts/publish
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "dotnet publish failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Package and checksum
+        id: package
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+          $packageName = "WtssPamBrokerEnrollmentService-$version-win-x64.zip"
+          $packagePath = Join-Path ./artifacts $packageName
+
+          Copy-Item -LiteralPath ./README.md -Destination ./artifacts/publish/README.md
+          Copy-Item -LiteralPath ./VERSION -Destination ./artifacts/publish/VERSION
+
+          $manifest = [ordered]@{
+            product = 'WTSS PAM Broker Enrollment Service'
+            version = $version
+            runtime = 'win-x64'
+            selfContained = $true
+            commit = '${{ github.sha }}'
+            builtAtUtc = [DateTime]::UtcNow.ToString('O')
+          }
+          $manifest | ConvertTo-Json | Set-Content -LiteralPath ./artifacts/publish/release-manifest.json -Encoding utf8
+
+          Compress-Archive -Path ./artifacts/publish/* -DestinationPath $packagePath -CompressionLevel Optimal
+          $hash = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $packageName" | Set-Content -LiteralPath "$packagePath.sha256" -Encoding ascii
+
+          "package=$packagePath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "checksum=$packagePath.sha256" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WtssPamBrokerEnrollmentService-${{ steps.version.outputs.version }}-win-x64
+          path: |
+            ${{ steps.package.outputs.package }}
+            ${{ steps.package.outputs.checksum }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create GitHub prerelease
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create '${{ steps.version.outputs.tag }}' `
+            '${{ steps.package.outputs.package }}' `
+            '${{ steps.package.outputs.checksum }}' `
+            --target '${{ github.sha }}' `
+            --title 'WTSS PAM Broker Enrollment Service ${{ steps.version.outputs.version }}' `
+            --generate-notes `
+            --prerelease
