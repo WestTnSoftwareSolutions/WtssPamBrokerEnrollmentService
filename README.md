@@ -2,6 +2,13 @@
 
 An add-only enrollment controller for One Identity Safeguard for Privileged Passwords (SPP) and Safeguard Secrets Broker. It detects password-bearing accounts in one configured SPP account group, adds eligible accounts to the Broker's A2A registration and one plugin instance, and refreshes an already-enabled Broker monitor so newly mapped credentials are pushed immediately.
 
+Two deployment forms are maintained in this repository:
+
+- `powershell/` is the recommended client MVP: an idempotent reconciliation script run by Windows Task Scheduler using the supported `safeguard-ps` and `safeguard-devops` modules.
+- `src/` is the stateful .NET service and remains the foundation for a future productized or unified extension-server component.
+
+See [`powershell/README.md`](powershell/README.md) for the PowerShell deployment, security model, dry run, and Scheduled Task installation.
+
 This is the standalone Part 1 implementation. It intentionally does not remove mappings, alter the selected SPP group, or directly mutate SPP's A2A registration. It uses the same Broker API sequence as the Secrets Broker UI, allowing the Broker to own its SPP-side A2A configuration.
 
 ## Reconciliation flow
@@ -79,7 +86,9 @@ To publish a test build:
 4. Download `WtssPamBrokerEnrollmentService-<version>-win-x64.zip` from the resulting GitHub prerelease.
 5. Verify the adjacent `.sha256` file before transferring the ZIP into the client environment.
 
-The workflow restores, builds, and tests the solution before publishing. It produces a self-contained Windows x64 package, embeds a release manifest containing the source commit, uploads a short-lived workflow artifact, and creates an immutable `v<version>` GitHub prerelease. A version cannot be published again after its tag exists; increment `VERSION` for every new build.
+For the Scheduled Task deployment, download `WtssPamBrokerEnrollmentPowerShell-<version>.zip` and verify its adjacent checksum instead.
+
+The workflow restores, builds, and tests the solution and runs the Pester suite before publishing. It produces both a self-contained Windows x64 service package and a separate PowerShell package, uploads short-lived workflow artifacts, and creates an immutable `v<version>` GitHub prerelease. A version cannot be published again after its tag exists; increment `VERSION` for every new build.
 
 ## First-pass boundaries
 
